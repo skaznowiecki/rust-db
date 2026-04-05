@@ -1,3 +1,4 @@
+use crate::error::DbError;
 use crate::lexer::token::Token;
 use super::ast::Statement;
 
@@ -24,27 +25,27 @@ impl Parser {
         token
     }
 
-    pub(crate) fn expect_keyword(&mut self, keyword: &str) -> Result<(), String> {
+    pub(crate) fn expect_keyword(&mut self, keyword: &str) -> Result<(), DbError> {
         match self.advance() {
             Some(Token::Keyword(k)) if k == keyword => Ok(()),
-            Some(token) => Err(format!("Expected keyword '{}', got {:?}", keyword, token)),
-            None => Err(format!("Expected keyword '{}', got end of input", keyword)),
+            Some(token) => Err(DbError::ParseError(format!("Expected keyword '{}', got {:?}", keyword, token))),
+            None => Err(DbError::ParseError(format!("Expected keyword '{}', got end of input", keyword))),
         }
     }
 
-    pub(crate) fn expect_identifier(&mut self) -> Result<String, String> {
+    pub(crate) fn expect_identifier(&mut self) -> Result<String, DbError> {
         match self.advance() {
             Some(Token::Identifier(name)) => Ok(name.clone()),
-            Some(token) => Err(format!("Expected identifier, got {:?}", token)),
-            None => Err("Expected identifier, got end of input".into()),
+            Some(token) => Err(DbError::ParseError(format!("Expected identifier, got {:?}", token))),
+            None => Err(DbError::ParseError("Expected identifier, got end of input".into())),
         }
     }
 
-    pub(crate) fn expect_token(&mut self, expected: &Token) -> Result<(), String> {
+    pub(crate) fn expect_token(&mut self, expected: &Token) -> Result<(), DbError> {
         match self.advance() {
             Some(token) if token == expected => Ok(()),
-            Some(token) => Err(format!("Expected {:?}, got {:?}", expected, token)),
-            None => Err(format!("Expected {:?}, got end of input", expected)),
+            Some(token) => Err(DbError::ParseError(format!("Expected {:?}, got {:?}", expected, token))),
+            None => Err(DbError::ParseError(format!("Expected {:?}, got end of input", expected))),
         }
     }
 
@@ -54,15 +55,15 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Statement, String> {
+    pub fn parse(&mut self) -> Result<Statement, DbError> {
         match self.peek() {
             Some(Token::Keyword(k)) if k == "CREATE" => {
                 self.advance();
                 match self.peek() {
                     Some(Token::Keyword(k)) if k == "DATABASE" => self.parse_create_database(),
                     Some(Token::Keyword(k)) if k == "TABLE" => self.parse_create_table(),
-                    Some(token) => Err(format!("Unexpected token after CREATE: {:?}", token)),
-                    None => Err("Unexpected end of input after CREATE".into()),
+                    Some(token) => Err(DbError::ParseError(format!("Unexpected token after CREATE: {:?}", token))),
+                    None => Err(DbError::ParseError("Unexpected end of input after CREATE".into())),
                 }
             }
             Some(Token::Keyword(k)) if k == "DROP" => {
@@ -70,13 +71,17 @@ impl Parser {
                 match self.peek() {
                     Some(Token::Keyword(k)) if k == "DATABASE" => self.parse_drop_database(),
                     Some(Token::Keyword(k)) if k == "TABLE" => self.parse_drop_table(),
-                    Some(token) => Err(format!("Unexpected token after DROP: {:?}", token)),
-                    None => Err("Unexpected end of input after DROP".into()),
+                    Some(token) => Err(DbError::ParseError(format!("Unexpected token after DROP: {:?}", token))),
+                    None => Err(DbError::ParseError("Unexpected end of input after DROP".into())),
                 }
             }
+            Some(Token::Keyword(k)) if k == "INSERT" => {
+                self.advance();
+                self.parse_insert_into()
+            }
             Some(Token::Keyword(k)) if k == "USE" => self.parse_use(),
-            Some(token) => Err(format!("Unexpected token: {:?}", token)),
-            None => Err("Empty input".into()),
+            Some(token) => Err(DbError::ParseError(format!("Unexpected token: {:?}", token))),
+            None => Err(DbError::ParseError("Empty input".into())),
         }
     }
 }

@@ -1,13 +1,15 @@
+use crate::error::DbError;
 use super::token::Token;
 
 const KEYWORDS: &[&str] = &[
     "CREATE", "DROP", "DATABASE", "TABLE", "USE",
+    "INSERT", "INTO", "VALUES",
     "SERIAL", "INTEGER", "INT", "VARCHAR", "TEXT", "BOOLEAN",
     "PRIMARY", "KEY", "NOT", "NULL", "UNIQUE", "DEFAULT",
     "TRUE", "FALSE",
 ];
 
-pub fn tokenize(input: &str) -> Result<Vec<Token>, String> {
+pub fn tokenize(input: &str) -> Result<Vec<Token>, DbError> {
     let mut tokens = Vec::new();
     let mut chars = input.chars().peekable();
 
@@ -26,13 +28,13 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, String> {
         }
 
         if ch == '\'' {
-            chars.next(); // consume opening quote
+            chars.next();
             let mut s = String::new();
             loop {
                 match chars.next() {
                     Some('\'') => break,
                     Some(c) => s.push(c),
-                    None => return Err("Unterminated string literal".into()),
+                    None => return Err(DbError::LexerError("Unterminated string literal".into())),
                 }
             }
             tokens.push(Token::StringLiteral(s));
@@ -49,7 +51,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, String> {
                     break;
                 }
             }
-            let n: i64 = num.parse().map_err(|e| format!("Invalid number: {}", e))?;
+            let n: i64 = num.parse().map_err(|e| DbError::LexerError(format!("Invalid number: {}", e)))?;
             tokens.push(Token::Number(n));
             continue;
         }
@@ -73,7 +75,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, String> {
             continue;
         }
 
-        return Err(format!("Unexpected character: '{}'", ch));
+        return Err(DbError::LexerError(format!("Unexpected character: '{}'", ch)));
     }
 
     Ok(tokens)

@@ -1,28 +1,28 @@
 use std::fs;
 use std::path::Path;
 
+use crate::error::DbError;
 use crate::parser::ast::CreateTable;
 use crate::storage::constants::{CATALOG_ID, DATA_DIR, FIRST_TABLE_ID};
 use crate::storage::file_utils::read_last_line;
 use crate::storage::schema::{self, TableSchema};
 
-pub fn create_table(db_name: &str, table: &CreateTable) -> Result<(), String> {
+pub fn create_table(db_name: &str, table: &CreateTable) -> Result<(), DbError> {
     let db_path = format!("{}/{}", DATA_DIR, db_name);
 
     if !Path::new(&db_path).exists() {
-        return Err(format!("Database '{}' does not exist", db_name));
+        return Err(DbError::DatabaseNotFound(db_name.into()));
     }
 
     let mut db_schema = schema::load(db_name)?;
 
     let catalog_data_path = format!("{}/{}/data", db_path, CATALOG_ID);
-    let catalog_content = fs::read_to_string(&catalog_data_path)
-        .map_err(|e| format!("Failed to read catalog: {}", e))?;
+    let catalog_content = fs::read_to_string(&catalog_data_path)?;
 
     for line in catalog_content.lines() {
         let fields: Vec<&str> = line.split('|').collect();
         if fields.len() >= 2 && fields[1] == table.name {
-            return Err(format!("Table '{}' already exists", table.name));
+            return Err(DbError::TableAlreadyExists(table.name.clone()));
         }
     }
 
@@ -32,9 +32,9 @@ pub fn create_table(db_name: &str, table: &CreateTable) -> Result<(), String> {
             let last_id = last_line
                 .split('|')
                 .next()
-                .ok_or("Invalid catalog entry")?
+                .ok_or(DbError::IoError("Invalid catalog entry".into()))?
                 .parse::<u64>()
-                .map_err(|e| format!("Invalid ID in catalog: {}", e))?;
+                .map_err(|e| DbError::IoError(format!("Invalid ID in catalog: {}", e)))?;
             last_id + 1
         }
     };
@@ -42,14 +42,11 @@ pub fn create_table(db_name: &str, table: &CreateTable) -> Result<(), String> {
     let catalog_record = format!("{}|{}|default\n", next_id, table.name);
     let mut catalog_data = catalog_content;
     catalog_data.push_str(&catalog_record);
-    fs::write(&catalog_data_path, &catalog_data)
-        .map_err(|e| format!("Failed to update catalog: {}", e))?;
+    fs::write(&catalog_data_path, &catalog_data)?;
 
     let table_path = format!("{}/{}", db_path, next_id);
-    fs::create_dir_all(&table_path)
-        .map_err(|e| format!("Failed to create table directory: {}", e))?;
-    fs::write(format!("{}/data", table_path), "")
-        .map_err(|e| format!("Failed to create table data file: {}", e))?;
+    fs::create_dir_all(&table_path)?;
+    fs::write(format!("{}/data", table_path), "")?;
 
     db_schema.insert(
         next_id.to_string(),

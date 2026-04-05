@@ -1,6 +1,9 @@
+use crate::error::DbError;
 use crate::parser;
 use crate::parser::ast::Statement;
 use crate::storage;
+
+use super::database::Database;
 
 pub enum ExecuteResult {
     Message(String),
@@ -8,30 +11,36 @@ pub enum ExecuteResult {
 }
 
 pub struct Engine {
-    current_db: Option<String>,
+    db: Option<Database>,
 }
 
 impl Engine {
     pub fn new() -> Self {
-        Self { current_db: None }
+        Self { db: None }
     }
 
     pub fn with_db(db_name: &str) -> Self {
         Self {
-            current_db: Some(db_name.to_string()),
+            db: Database::load(db_name).ok(),
         }
     }
 
     pub fn current_db(&self) -> Option<&str> {
-        self.current_db.as_deref()
+        self.db.as_ref().map(|db| db.name.as_str())
     }
 
-    pub fn execute(&mut self, sql: &str) -> Result<ExecuteResult, String> {
+    fn require_db(&mut self) -> Result<&mut Database, DbError> {
+        self.db
+            .as_mut()
+            .ok_or(DbError::DatabaseNotFound("No database selected".into()))
+    }
+
+    pub fn execute(&mut self, sql: &str) -> Result<ExecuteResult, DbError> {
         let stmt = parser::parse_sql(sql)?;
         self.execute_statement(stmt)
     }
 
-    fn execute_statement(&mut self, stmt: Statement) -> Result<ExecuteResult, String> {
+    fn execute_statement(&mut self, stmt: Statement) -> Result<ExecuteResult, DbError> {
         match stmt {
             Statement::CreateDatabase(create_db) => {
                 storage::create_database(&create_db.name)?;
@@ -41,20 +50,14 @@ impl Engine {
                 )))
             }
             Statement::CreateTable(create_table) => {
-                let db = self
-                    .current_db
-                    .as_deref()
-                    .ok_or("No database selected. Use: USE <database_name>")?;
-                storage::create_table(db, &create_table)?;
-                Ok(ExecuteResult::Message(format!(
-                    "Table '{}' created",
-                    create_table.name
-                )))
+                let db = self.require_db()?;
+                let msg = db.create_table(&create_table)?;
+                Ok(ExecuteResult::Message(msg))
             }
             Statement::DropDatabase(drop_db) => {
                 storage::delete_database(&drop_db.name)?;
-                if self.current_db.as_deref() == Some(&drop_db.name) {
-                    self.current_db = None;
+                if self.current_db() == Some(&drop_db.name) {
+                    self.db = None;
                 }
                 Ok(ExecuteResult::Message(format!(
                     "Database '{}' dropped",
@@ -62,22 +65,18 @@ impl Engine {
                 )))
             }
             Statement::DropTable(drop_table) => {
-                let db = self
-                    .current_db
-                    .as_deref()
-                    .ok_or("No database selected. Use: USE <database_name>")?;
-                storage::delete_table(db, &drop_table.name)?;
-                Ok(ExecuteResult::Message(format!(
-                    "Table '{}' dropped",
-                    drop_table.name
-                )))
+                let db = self.require_db()?;
+                let msg = db.drop_table(&drop_table.name)?;
+                Ok(ExecuteResult::Message(msg))
+            }
+            Statement::InsertInto(insert) => {
+                let db = self.require_db()?;
+                let msg = db.insert(&insert)?;
+                Ok(ExecuteResult::Message(msg))
             }
             Statement::Use(use_db) => {
-                let db_path = format!("./data/{}", use_db.name);
-                if !std::path::Path::new(&db_path).exists() {
-                    return Err(format!("Database '{}' does not exist", use_db.name));
-                }
-                self.current_db = Some(use_db.name.clone());
+                let database = Database::load(&use_db.name)?;
+                self.db = Some(database);
                 Ok(ExecuteResult::DbChanged(use_db.name))
             }
         }

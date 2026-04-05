@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Mutex;
 
+use db::error::DbError;
 use db::parser::ast::*;
 use db::storage;
 
@@ -38,7 +39,7 @@ fn test_create_database_already_exists() {
     storage::create_database(db).unwrap();
     let result = storage::create_database(db);
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("already exists"));
+    assert!(matches!(result.unwrap_err(), DbError::DatabaseAlreadyExists(_)));
 
     cleanup(db);
 }
@@ -109,7 +110,7 @@ fn test_create_table_duplicate() {
     storage::create_table(db, &table).unwrap();
     let result = storage::create_table(db, &table);
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("already exists"));
+    assert!(matches!(result.unwrap_err(), DbError::TableAlreadyExists(_)));
 
     cleanup(db);
 }
@@ -131,7 +132,7 @@ fn test_create_table_db_not_found() {
 
     let result = storage::create_table("nonexistent_db_xyz", &table);
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("does not exist"));
+    assert!(matches!(result.unwrap_err(), DbError::DatabaseNotFound(_)));
 }
 
 #[test]
@@ -182,7 +183,7 @@ fn test_delete_table_not_found() {
 
     let result = storage::delete_table(db, "nonexistent");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("does not exist"));
+    assert!(matches!(result.unwrap_err(), DbError::TableNotFound(_)));
 
     cleanup(db);
 }
@@ -204,5 +205,136 @@ fn test_delete_database_not_found() {
     let _guard = LOCK.lock().unwrap();
     let result = storage::delete_database("nonexistent_db_xyz");
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("does not exist"));
+    assert!(matches!(result.unwrap_err(), DbError::DatabaseNotFound(_)));
+}
+
+// --- INSERT INTO tests ---
+
+fn setup_db_with_table(db_name: &str) -> db::engine::database::Database {
+    cleanup(db_name);
+    storage::create_database(db_name).unwrap();
+    let table = CreateTable {
+        name: "users".into(),
+        columns: vec![
+            ColumnDef { name: "id".into(), data_type: DataType::Serial, is_primary_key: true, is_not_null: true, is_unique: false, default: None },
+            ColumnDef { name: "email".into(), data_type: DataType::Varchar(255), is_primary_key: false, is_not_null: true, is_unique: true, default: None },
+            ColumnDef { name: "name".into(), data_type: DataType::Text, is_primary_key: false, is_not_null: false, is_unique: false, default: None },
+            ColumnDef { name: "active".into(), data_type: DataType::Boolean, is_primary_key: false, is_not_null: false, is_unique: false, default: Some(DefaultValue::Bool(true)) },
+        ],
+    };
+    storage::create_table(db_name, &table).unwrap();
+    db::engine::database::Database::load(db_name).unwrap()
+}
+
+#[test]
+fn test_insert_valid_row() {
+    let _guard = LOCK.lock().unwrap();
+    let db_name = "test_insert_valid";
+    let mut database = setup_db_with_table(db_name);
+
+    let insert = InsertInto {
+        table: "users".into(),
+        columns: vec!["email".into(), "name".into()],
+        values: vec![Value::String("john@test.com".into()), Value::String("John".into())],
+    };
+    database.insert(&insert).unwrap();
+    database.flush_all().unwrap();
+
+    let data = fs::read_to_string(format!("./data/{}/1001/data", db_name)).unwrap();
+    assert_eq!(data.trim(), "1|john@test.com|John|true");
+    cleanup(db_name);
+}
+
+#[test]
+fn test_insert_serial_autoincrement() {
+    let _guard = LOCK.lock().unwrap();
+    let db_name = "test_insert_serial";
+    let mut database = setup_db_with_table(db_name);
+
+    let insert1 = InsertInto { table: "users".into(), columns: vec!["email".into()], values: vec![Value::String("a@test.com".into())] };
+    let insert2 = InsertInto { table: "users".into(), columns: vec!["email".into()], values: vec![Value::String("b@test.com".into())] };
+
+    database.insert(&insert1).unwrap();
+    database.insert(&insert2).unwrap();
+    database.flush_all().unwrap();
+
+    let data = fs::read_to_string(format!("./data/{}/1001/data", db_name)).unwrap();
+    let lines: Vec<&str> = data.trim().lines().collect();
+    assert!(lines[0].starts_with("1|"));
+    assert!(lines[1].starts_with("2|"));
+    cleanup(db_name);
+}
+
+#[test]
+fn test_insert_column_not_found() {
+    let _guard = LOCK.lock().unwrap();
+    let db_name = "test_insert_col_nf";
+    let mut database = setup_db_with_table(db_name);
+
+    let insert = InsertInto { table: "users".into(), columns: vec!["nonexistent".into()], values: vec![Value::String("x".into())] };
+    let result = database.insert(&insert);
+    assert!(matches!(result.unwrap_err(), DbError::ColumnNotFound { .. }));
+    cleanup(db_name);
+}
+
+#[test]
+fn test_insert_type_mismatch() {
+    let _guard = LOCK.lock().unwrap();
+    let db_name = "test_insert_type";
+    let mut database = setup_db_with_table(db_name);
+
+    let insert = InsertInto {
+        table: "users".into(),
+        columns: vec!["email".into(), "active".into()],
+        values: vec![Value::String("a@test.com".into()), Value::Number(42)],
+    };
+    let result = database.insert(&insert);
+    assert!(matches!(result.unwrap_err(), DbError::TypeMismatch { .. }));
+    cleanup(db_name);
+}
+
+#[test]
+fn test_insert_not_null_missing() {
+    let _guard = LOCK.lock().unwrap();
+    let db_name = "test_insert_nn";
+    let mut database = setup_db_with_table(db_name);
+
+    let insert = InsertInto { table: "users".into(), columns: vec!["name".into()], values: vec![Value::String("John".into())] };
+    let result = database.insert(&insert);
+    assert!(matches!(result.unwrap_err(), DbError::NotNullViolation(_)));
+    cleanup(db_name);
+}
+
+#[test]
+fn test_insert_default_value() {
+    let _guard = LOCK.lock().unwrap();
+    let db_name = "test_insert_default";
+    let mut database = setup_db_with_table(db_name);
+
+    let insert = InsertInto { table: "users".into(), columns: vec!["email".into()], values: vec![Value::String("a@test.com".into())] };
+    database.insert(&insert).unwrap();
+    database.flush_all().unwrap();
+
+    let data = fs::read_to_string(format!("./data/{}/1001/data", db_name)).unwrap();
+    assert!(data.contains("|true"));
+    cleanup(db_name);
+}
+
+#[test]
+fn test_insert_null_value() {
+    let _guard = LOCK.lock().unwrap();
+    let db_name = "test_insert_null";
+    let mut database = setup_db_with_table(db_name);
+
+    let insert = InsertInto {
+        table: "users".into(),
+        columns: vec!["email".into(), "name".into()],
+        values: vec![Value::String("a@test.com".into()), Value::Null],
+    };
+    database.insert(&insert).unwrap();
+    database.flush_all().unwrap();
+
+    let data = fs::read_to_string(format!("./data/{}/1001/data", db_name)).unwrap();
+    assert_eq!(data.trim(), "1|a@test.com||true");
+    cleanup(db_name);
 }

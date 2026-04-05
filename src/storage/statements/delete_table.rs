@@ -1,19 +1,19 @@
 use std::fs;
 use std::path::Path;
 
+use crate::error::DbError;
 use crate::storage::constants::{CATALOG_ID, DATA_DIR};
 use crate::storage::schema;
 
-pub fn delete_table(db_name: &str, table_name: &str) -> Result<(), String> {
+pub fn delete_table(db_name: &str, table_name: &str) -> Result<(), DbError> {
     let db_path = format!("{}/{}", DATA_DIR, db_name);
 
     if !Path::new(&db_path).exists() {
-        return Err(format!("Database '{}' does not exist", db_name));
+        return Err(DbError::DatabaseNotFound(db_name.into()));
     }
 
     let catalog_data_path = format!("{}/{}/data", db_path, CATALOG_ID);
-    let catalog_content = fs::read_to_string(&catalog_data_path)
-        .map_err(|e| format!("Failed to read catalog: {}", e))?;
+    let catalog_content = fs::read_to_string(&catalog_data_path)?;
 
     let mut table_id: Option<String> = None;
     let mut remaining_lines = Vec::new();
@@ -27,18 +27,16 @@ pub fn delete_table(db_name: &str, table_name: &str) -> Result<(), String> {
         }
     }
 
-    let table_id = table_id.ok_or(format!("Table '{}' does not exist", table_name))?;
+    let table_id = table_id.ok_or(DbError::TableNotFound(table_name.into()))?;
 
     let mut new_catalog = remaining_lines.join("\n");
     if !new_catalog.is_empty() {
         new_catalog.push('\n');
     }
-    fs::write(&catalog_data_path, &new_catalog)
-        .map_err(|e| format!("Failed to update catalog: {}", e))?;
+    fs::write(&catalog_data_path, &new_catalog)?;
 
     let table_path = format!("{}/{}", db_path, table_id);
-    fs::remove_dir_all(&table_path)
-        .map_err(|e| format!("Failed to remove table directory: {}", e))?;
+    fs::remove_dir_all(&table_path)?;
 
     let mut db_schema = schema::load(db_name)?;
     db_schema.remove(&table_id);

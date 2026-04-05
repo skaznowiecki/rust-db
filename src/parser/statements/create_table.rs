@@ -1,3 +1,4 @@
+use crate::error::DbError;
 use crate::lexer::token::Token;
 use crate::parser::ast::{
     ColumnDef, CreateTable, DataType, DefaultValue, Statement,
@@ -5,8 +6,8 @@ use crate::parser::ast::{
 use super::super::parser::Parser;
 
 impl Parser {
-    pub(crate) fn parse_create_table(&mut self) -> Result<Statement, String> {
-        self.advance(); // consume TABLE
+    pub(crate) fn parse_create_table(&mut self) -> Result<Statement, DbError> {
+        self.advance();
         let name = self.expect_identifier()?;
         self.expect_token(&Token::LeftParen)?;
 
@@ -17,8 +18,8 @@ impl Parser {
             match self.peek() {
                 Some(Token::Comma) => { self.advance(); }
                 Some(Token::RightParen) => { self.advance(); break; }
-                Some(token) => return Err(format!("Expected ',' or ')', got {:?}", token)),
-                None => return Err("Unexpected end of input in column list".into()),
+                Some(token) => return Err(DbError::ParseError(format!("Expected ',' or ')', got {:?}", token))),
+                None => return Err(DbError::ParseError("Unexpected end of input in column list".into())),
             }
         }
 
@@ -26,7 +27,7 @@ impl Parser {
         Ok(Statement::CreateTable(CreateTable { name, columns }))
     }
 
-    fn parse_column_def(&mut self) -> Result<ColumnDef, String> {
+    fn parse_column_def(&mut self) -> Result<ColumnDef, DbError> {
         let name = self.expect_identifier()?;
         let data_type = self.parse_data_type()?;
 
@@ -60,14 +61,14 @@ impl Parser {
                     self.advance();
                     col.default = Some(self.parse_default_value()?);
                 }
-                Some(token) => return Err(format!("Unexpected token in column definition: {:?}", token)),
+                Some(token) => return Err(DbError::ParseError(format!("Unexpected token in column definition: {:?}", token))),
             }
         }
 
         Ok(col)
     }
 
-    fn parse_data_type(&mut self) -> Result<DataType, String> {
+    fn parse_data_type(&mut self) -> Result<DataType, DbError> {
         match self.advance() {
             Some(Token::Keyword(k)) => match k.as_str() {
                 "SERIAL" => Ok(DataType::Serial),
@@ -78,27 +79,27 @@ impl Parser {
                     self.expect_token(&Token::LeftParen)?;
                     let size = match self.advance() {
                         Some(Token::Number(n)) => *n as usize,
-                        Some(token) => return Err(format!("Expected number for VARCHAR size, got {:?}", token)),
-                        None => return Err("Expected number for VARCHAR size".into()),
+                        Some(token) => return Err(DbError::ParseError(format!("Expected number for VARCHAR size, got {:?}", token))),
+                        None => return Err(DbError::ParseError("Expected number for VARCHAR size".into())),
                     };
                     self.expect_token(&Token::RightParen)?;
                     Ok(DataType::Varchar(size))
                 }
-                other => Err(format!("Unknown data type: {}", other)),
+                other => Err(DbError::ParseError(format!("Unknown data type: {}", other))),
             },
-            Some(token) => Err(format!("Expected data type, got {:?}", token)),
-            None => Err("Expected data type, got end of input".into()),
+            Some(token) => Err(DbError::ParseError(format!("Expected data type, got {:?}", token))),
+            None => Err(DbError::ParseError("Expected data type, got end of input".into())),
         }
     }
 
-    fn parse_default_value(&mut self) -> Result<DefaultValue, String> {
+    fn parse_default_value(&mut self) -> Result<DefaultValue, DbError> {
         match self.advance() {
             Some(Token::Keyword(k)) if k == "TRUE" => Ok(DefaultValue::Bool(true)),
             Some(Token::Keyword(k)) if k == "FALSE" => Ok(DefaultValue::Bool(false)),
             Some(Token::Number(n)) => Ok(DefaultValue::Number(*n)),
             Some(Token::StringLiteral(s)) => Ok(DefaultValue::String(s.clone())),
-            Some(token) => Err(format!("Expected default value, got {:?}", token)),
-            None => Err("Expected default value, got end of input".into()),
+            Some(token) => Err(DbError::ParseError(format!("Expected default value, got {:?}", token))),
+            None => Err(DbError::ParseError("Expected default value, got end of input".into())),
         }
     }
 }

@@ -6,7 +6,23 @@ pub enum Statement {
     CreateTable(CreateTable),
     DropDatabase(DropDatabase),
     DropTable(DropTable),
+    InsertInto(InsertInto),
     Use(UseDatabase),
+}
+
+#[derive(Debug, PartialEq)]
+pub struct InsertInto {
+    pub table: String,
+    pub columns: Vec<String>,
+    pub values: Vec<Value>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Value {
+    Number(i64),
+    String(String),
+    Bool(bool),
+    Null,
 }
 
 #[derive(Debug, PartialEq)]

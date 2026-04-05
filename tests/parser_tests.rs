@@ -155,3 +155,42 @@ fn test_parse_drop_database() {
         Statement::DropDatabase(DropDatabase { name: "mi_app".into() })
     );
 }
+
+#[test]
+fn test_parse_insert_into() {
+    let stmt = parse_sql("INSERT INTO usuarios (email, nombre) VALUES ('john@test.com', 'John');").unwrap();
+    assert_eq!(
+        stmt,
+        Statement::InsertInto(InsertInto {
+            table: "usuarios".into(),
+            columns: vec!["email".into(), "nombre".into()],
+            values: vec![Value::String("john@test.com".into()), Value::String("John".into())],
+        })
+    );
+}
+
+#[test]
+fn test_parse_insert_with_null() {
+    let stmt = parse_sql("INSERT INTO t (x) VALUES (NULL)").unwrap();
+    if let Statement::InsertInto(ins) = stmt {
+        assert_eq!(ins.values, vec![Value::Null]);
+    } else {
+        panic!("Expected InsertInto");
+    }
+}
+
+#[test]
+fn test_parse_insert_with_bool_and_number() {
+    let stmt = parse_sql("INSERT INTO t (a, b) VALUES (true, 42)").unwrap();
+    if let Statement::InsertInto(ins) = stmt {
+        assert_eq!(ins.values, vec![Value::Bool(true), Value::Number(42)]);
+    } else {
+        panic!("Expected InsertInto");
+    }
+}
+
+#[test]
+fn test_parse_insert_column_value_mismatch() {
+    let result = parse_sql("INSERT INTO t (a, b) VALUES (1)");
+    assert!(result.is_err());
+}
