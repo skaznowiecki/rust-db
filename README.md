@@ -114,13 +114,32 @@ src/
     └── statements/           One file per storage operation
 ```
 
-## Next Up
+## Roadmap
 
-- [ ] Multi-threaded server (concurrent client connections)
-- [ ] Background flush thread (periodic write buffer flush)
-- [ ] Catalog cache in memory (avoid disk reads for table name lookups)
-- [ ] `SELECT` with basic `WHERE` filtering
-- [ ] `UPDATE` and `DELETE` statements
-- [ ] Binary storage format (pages)
-- [ ] Indexes (B-tree)
-- [ ] Query planner
+### Phase 1 — Concurrency & Performance
+| Feature | Description |
+|---|---|
+| Multi-threaded server | Handle concurrent client connections via thread pool |
+| Background flush | Periodic write buffer flush on a timer thread |
+| Catalog cache | In-memory table name → ID mapping to avoid disk reads |
+
+### Phase 2 — Query Engine
+| Feature | Description |
+|---|---|
+| `SELECT` | Basic queries with `WHERE` filtering and comparison operators |
+| `UPDATE` | Modify existing rows |
+| `DELETE` | Remove rows |
+
+### Phase 3 — Storage Engine
+| Feature | Description |
+|---|---|
+| Binary format | Page-based storage replacing pipe-delimited text |
+| B-tree indexes | Indexed lookups for faster queries |
+| WAL | Write-ahead log for crash recovery |
+
+### Phase 4 — Advanced
+| Feature | Description |
+|---|---|
+| Query planner | Cost-based optimization for query execution |
+| `JOIN` support | Cross-table queries |
+| Aggregations | `COUNT`, `SUM`, `AVG`, `GROUP BY` |
