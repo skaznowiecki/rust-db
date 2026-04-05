@@ -25,7 +25,8 @@ This is a personal learning project by [Sergio Kaznowiecki](https://github.com/s
   - 200KB write buffer per table, flushed periodically or on shutdown
 
 - **Client-Server Architecture**
-  - TCP server on `localhost:5433`
+  - Multi-threaded TCP server on `localhost:5433` (one thread per connection)
+  - Background flush thread (every 5 seconds)
   - Persistent connections (one TCP connection per REPL session)
   - Interactive REPL (`db connect`) and single-command mode (`db exec`)
   - Background server with `db start` / `db stop` / `db info`
@@ -116,12 +117,12 @@ src/
 
 ## Roadmap
 
-### Phase 1 — Concurrency & Performance
-| Feature | Description |
-|---|---|
-| Multi-threaded server | Handle concurrent client connections via thread pool |
-| Background flush | Periodic write buffer flush on a timer thread |
-| Catalog cache | In-memory table name → ID mapping to avoid disk reads |
+### Phase 1 — Concurrency & Performance ✓
+| Feature | Status | Description |
+|---|---|---|
+| Multi-threaded server | Done | Each client connection handled in its own thread |
+| Background flush | Done | Timer thread flushes write buffers every 5 seconds |
+| Catalog cache | Done | Table name → Table mapping loaded in memory via Database struct |
 
 ### Phase 2 — Query Engine
 | Feature | Description |

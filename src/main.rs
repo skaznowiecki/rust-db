@@ -52,9 +52,8 @@ fn main() {
             }
         }
         "__server" => {
-            // Internal: actual server process (runs in foreground)
-            let mut engine = Engine::new();
-            ServerProvider { port }.run(&mut engine);
+            let engine = Engine::new();
+            ServerProvider { port }.run_server(engine);
         }
         "stop" => match server::stop_server() {
             Ok(msg) => println!("{}", msg),

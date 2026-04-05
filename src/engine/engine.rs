@@ -35,6 +35,13 @@ impl Engine {
             .ok_or(DbError::DatabaseNotFound("No database selected".into()))
     }
 
+    pub fn flush(&mut self) -> Result<(), DbError> {
+        if let Some(ref mut db) = self.db {
+            db.flush_all()?;
+        }
+        Ok(())
+    }
+
     pub fn execute(&mut self, sql: &str) -> Result<ExecuteResult, DbError> {
         let stmt = parser::parse_sql(sql)?;
         self.execute_statement(stmt)
