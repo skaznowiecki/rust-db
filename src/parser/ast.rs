@@ -8,6 +8,7 @@ pub enum Statement {
     DropTable(DropTable),
     InsertInto(InsertInto),
     Use(UseDatabase),
+    Select(Select),
 }
 
 #[derive(Debug, PartialEq)]
@@ -23,6 +24,19 @@ pub enum Value {
     String(String),
     Bool(bool),
     Null,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Select {
+    pub table: String,
+    pub where_clause: Option<WhereClause>,
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct WhereClause {
+    pub column: String,
+    pub value: Value,
 }
 
 #[derive(Debug, PartialEq)]

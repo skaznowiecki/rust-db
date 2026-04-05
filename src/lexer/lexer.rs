@@ -7,6 +7,7 @@ const KEYWORDS: &[&str] = &[
     "SERIAL", "INTEGER", "INT", "VARCHAR", "TEXT", "BOOLEAN",
     "PRIMARY", "KEY", "NOT", "NULL", "UNIQUE", "DEFAULT",
     "TRUE", "FALSE",
+    "SELECT", "FROM", "WHERE", "LIMIT",
 ];
 
 pub fn tokenize(input: &str) -> Result<Vec<Token>, DbError> {
@@ -24,6 +25,8 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, DbError> {
             '(' => { tokens.push(Token::LeftParen); chars.next(); continue; }
             ')' => { tokens.push(Token::RightParen); chars.next(); continue; }
             ',' => { tokens.push(Token::Comma); chars.next(); continue; }
+            '=' => { tokens.push(Token::Equals); chars.next(); continue; }
+            '*' => { tokens.push(Token::Asterisk); chars.next(); continue; }
             _ => {}
         }
 

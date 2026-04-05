@@ -1,8 +1,9 @@
-use std::fs::OpenOptions;
-use std::io::Write;
+use std::collections::HashMap;
+use std::fs::{self, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
 
 use crate::error::DbError;
-use crate::parser::ast::{DataType, DefaultValue, InsertInto, Value};
+use crate::parser::ast::{DataType, DefaultValue, InsertInto, Value, WhereClause};
 use crate::constants::{self, BUFFER_SIZE};
 use crate::storage::file_utils::read_last_line;
 use crate::storage::schema::TableSchema;
@@ -14,12 +15,18 @@ pub struct Table {
     db_name: String,
     serial_counter: Option<i64>,
     write_buffer: Vec<u8>,
+    column_index: HashMap<String, usize>,
 }
 
 impl Table {
+    fn build_column_index(schema: &TableSchema) -> HashMap<String, usize> {
+        schema.columns.iter().enumerate().map(|(i, c)| (c.name.clone(), i)).collect()
+    }
+
     pub fn load(db_name: &str, table_id: &str, table_name: &str, schema: TableSchema) -> Self {
         let serial_counter = Self::find_serial_pos(&schema)
             .map(|pos| Self::read_serial_from_disk(db_name, table_id, pos));
+        let column_index = Self::build_column_index(&schema);
 
         Self {
             id: table_id.to_string(),
@@ -28,6 +35,7 @@ impl Table {
             db_name: db_name.to_string(),
             serial_counter,
             write_buffer: Vec::new(),
+            column_index,
         }
     }
 
@@ -36,6 +44,7 @@ impl Table {
             .columns
             .iter()
             .any(|c| c.data_type == DataType::Serial);
+        let column_index = Self::build_column_index(&schema);
         Self {
             id: table_id.to_string(),
             name: table_name.to_string(),
@@ -43,7 +52,12 @@ impl Table {
             db_name: db_name.to_string(),
             serial_counter: if has_serial { Some(0) } else { None },
             write_buffer: Vec::new(),
+            column_index,
         }
+    }
+
+    pub fn column_pos(&self, name: &str) -> Option<usize> {
+        self.column_index.get(name).copied()
     }
 
     fn find_serial_pos(schema: &TableSchema) -> Option<usize> {
@@ -79,7 +93,7 @@ impl Table {
 
     fn validate_columns(&self, columns: &[String]) -> Result<(), DbError> {
         for col_name in columns {
-            if !self.schema.columns.iter().any(|c| &c.name == col_name) {
+            if self.column_pos(col_name).is_none() {
                 return Err(DbError::ColumnNotFound {
                     column: col_name.clone(),
                     table: self.name.clone(),
@@ -167,6 +181,55 @@ impl Table {
         Ok(format!("1 row inserted into '{}'", self.name))
     }
 
+    pub fn scan(&self, where_clause: Option<&WhereClause>, limit: Option<usize>) -> Result<Vec<Vec<String>>, DbError> {
+        let path = constants::table_data_path(&self.db_name, &self.id);
+
+        let file = match fs::File::open(&path) {
+            Ok(f) => f,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(e) => return Err(DbError::IoError(e.to_string())),
+        };
+
+        let col_index = if let Some(wc) = where_clause {
+            let idx = self.column_pos(&wc.column)
+                .ok_or(DbError::ColumnNotFound {
+                    column: wc.column.clone(),
+                    table: self.name.clone(),
+                })?;
+            Some(idx)
+        } else {
+            None
+        };
+
+        let mut rows = Vec::new();
+        let reader = BufReader::new(file);
+
+        for line in reader.lines() {
+            let line = line?;
+            if line.is_empty() {
+                continue;
+            }
+            let fields: Vec<String> = line.split('|').map(|s| s.to_string()).collect();
+
+            if let (Some(idx), Some(wc)) = (col_index, where_clause) {
+                let field_val = fields.get(idx).map(|s| s.as_str()).unwrap_or("");
+                if !match_value(field_val, &wc.value) {
+                    continue;
+                }
+            }
+
+            rows.push(fields);
+
+            if let Some(lim) = limit {
+                if rows.len() >= lim {
+                    break;
+                }
+            }
+        }
+
+        Ok(rows)
+    }
+
     pub fn flush(&mut self) -> Result<(), DbError> {
         if self.write_buffer.is_empty() {
             return Ok(());
@@ -204,5 +267,14 @@ fn default_to_string(default: &DefaultValue) -> String {
         DefaultValue::Number(n) => n.to_string(),
         DefaultValue::String(s) => s.clone(),
         DefaultValue::Bool(b) => b.to_string(),
+    }
+}
+
+fn match_value(field: &str, value: &Value) -> bool {
+    match value {
+        Value::Number(n) => field == n.to_string(),
+        Value::String(s) => field == s,
+        Value::Bool(b) => field == b.to_string(),
+        Value::Null => field.is_empty(),
     }
 }

@@ -1,4 +1,5 @@
-use std::io::{self, Write};
+use rustyline::error::ReadlineError;
+use rustyline::DefaultEditor;
 
 use crate::engine::engine::{Engine, ExecuteResult};
 use super::client::{self, Connection};
@@ -32,6 +33,7 @@ impl Provider for ReplProvider {
 
 impl ReplProvider {
     fn run_local(&self, engine: &mut Engine) {
+        let mut rl = DefaultEditor::new().unwrap();
         println!("Type your SQL statements. Ctrl+C to exit.\n");
 
         loop {
@@ -39,30 +41,28 @@ impl ReplProvider {
                 Some(db) => format!("{}> ", db),
                 None => "db> ".into(),
             };
-            print!("{}", prompt);
-            io::stdout().flush().unwrap();
 
-            let mut input = String::new();
-            match io::stdin().read_line(&mut input) {
-                Ok(0) => break,
-                Ok(_) => {}
+            match rl.readline(&prompt) {
+                Ok(line) => {
+                    let input = line.trim();
+                    if input.is_empty() {
+                        continue;
+                    }
+                    let _ = rl.add_history_entry(input);
+
+                    match engine.execute(input) {
+                        Ok(ExecuteResult::Message(msg)) => println!("{}", msg),
+                        Ok(ExecuteResult::DbChanged(name)) => {
+                            println!("Using database '{}'", name);
+                        }
+                        Err(e) => eprintln!("Error: {}", e),
+                    }
+                }
+                Err(ReadlineError::Interrupted | ReadlineError::Eof) => break,
                 Err(e) => {
-                    eprintln!("Error reading input: {}", e);
+                    eprintln!("Error: {}", e);
                     break;
                 }
-            }
-
-            let input = input.trim();
-            if input.is_empty() {
-                continue;
-            }
-
-            match engine.execute(input) {
-                Ok(ExecuteResult::Message(msg)) => println!("{}", msg),
-                Ok(ExecuteResult::DbChanged(name)) => {
-                    println!("Using database '{}'", name);
-                }
-                Err(e) => eprintln!("Error: {}", e),
             }
         }
     }
@@ -76,6 +76,7 @@ impl ReplProvider {
             }
         };
 
+        let mut rl = DefaultEditor::new().unwrap();
         println!("Type your SQL statements. Ctrl+C to exit.\n");
 
         let mut current_db: Option<String> = None;
@@ -85,36 +86,34 @@ impl ReplProvider {
                 Some(db) => format!("{}> ", db),
                 None => "db> ".into(),
             };
-            print!("{}", prompt);
-            io::stdout().flush().unwrap();
 
-            let mut input = String::new();
-            match io::stdin().read_line(&mut input) {
-                Ok(0) => break,
-                Ok(_) => {}
-                Err(e) => {
-                    eprintln!("Error reading input: {}", e);
-                    break;
-                }
-            }
+            match rl.readline(&prompt) {
+                Ok(line) => {
+                    let input = line.trim();
+                    if input.is_empty() {
+                        continue;
+                    }
+                    let _ = rl.add_history_entry(input);
 
-            let input = input.trim();
-            if input.is_empty() {
-                continue;
-            }
-
-            match conn.send(input) {
-                Ok(response) => {
-                    let (kind, msg) = client::parse_response(&response);
-                    match kind {
-                        "OK" => println!("{}", msg),
-                        "DB" => {
-                            println!("Using database '{}'", msg);
-                            current_db = Some(msg.to_string());
+                    match conn.send(input) {
+                        Ok(response) => {
+                            let (kind, msg) = client::parse_response(&response);
+                            match kind {
+                                "OK" => println!("{}", msg),
+                                "DB" => {
+                                    println!("Using database '{}'", msg);
+                                    current_db = Some(msg.to_string());
+                                }
+                                _ => eprintln!("Error: {}", msg),
+                            }
                         }
-                        _ => eprintln!("Error: {}", msg),
+                        Err(e) => {
+                            eprintln!("Error: {}", e);
+                            break;
+                        }
                     }
                 }
+                Err(ReadlineError::Interrupted | ReadlineError::Eof) => break,
                 Err(e) => {
                     eprintln!("Error: {}", e);
                     break;

@@ -48,14 +48,14 @@ pub fn default_port() -> u16 {
     DEFAULT_PORT
 }
 
-pub fn parse_response(response: &str) -> (&str, &str) {
+pub fn parse_response(response: &str) -> (&str, String) {
     if let Some(msg) = response.strip_prefix("OK:") {
-        ("OK", msg)
+        ("OK", msg.replace('\x1e', "\n"))
     } else if let Some(msg) = response.strip_prefix("ERR:") {
-        ("ERR", msg)
+        ("ERR", msg.to_string())
     } else if let Some(name) = response.strip_prefix("DB:") {
-        ("DB", name)
+        ("DB", name.to_string())
     } else {
-        ("ERR", response)
+        ("ERR", response.to_string())
     }
 }

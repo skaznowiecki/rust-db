@@ -89,7 +89,7 @@ impl ServerProvider {
             let response = {
                 let mut eng = engine.lock().unwrap();
                 match eng.execute(&sql) {
-                    Ok(ExecuteResult::Message(msg)) => format!("OK:{}\n", msg),
+                    Ok(ExecuteResult::Message(msg)) => format!("OK:{}\n", msg.replace('\n', "\x1e")),
                     Ok(ExecuteResult::DbChanged(name)) => format!("DB:{}\n", name),
                     Err(e) => format!("ERR:{}\n", e),
                 }

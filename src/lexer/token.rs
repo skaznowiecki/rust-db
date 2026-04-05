@@ -8,4 +8,6 @@ pub enum Token {
     RightParen,
     Comma,
     Semicolon,
+    Equals,
+    Asterisk,
 }

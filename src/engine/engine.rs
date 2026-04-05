@@ -81,6 +81,12 @@ impl Engine {
                 let msg = db.insert(&insert)?;
                 Ok(ExecuteResult::Message(msg))
             }
+            Statement::Select(select) => {
+                let db = self.require_db()?;
+                let (headers, rows) = db.select(&select.table, select.where_clause.as_ref(), select.limit)?;
+                let output = format_table(&headers, &rows);
+                Ok(ExecuteResult::Message(output))
+            }
             Statement::Use(use_db) => {
                 let database = Database::load(&use_db.name)?;
                 self.db = Some(database);
@@ -88,4 +94,53 @@ impl Engine {
             }
         }
     }
+}
+
+fn format_table(headers: &[String], rows: &[Vec<String>]) -> String {
+    let col_count = headers.len();
+
+    // Calculate max width per column
+    let mut widths: Vec<usize> = headers.iter().map(|h| h.len()).collect();
+    for row in rows {
+        for (i, val) in row.iter().enumerate() {
+            if i < col_count && val.len() > widths[i] {
+                widths[i] = val.len();
+            }
+        }
+    }
+
+    // Build separator line: +----+------+
+    let separator: String = widths
+        .iter()
+        .map(|w| format!("-{}-", "-".repeat(*w)))
+        .collect::<Vec<_>>()
+        .join("+");
+    let separator = format!("+{}+", separator);
+
+    // Build a row line: | val | val |
+    let format_row = |values: &[String]| -> String {
+        let cells: Vec<String> = values
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| *i < col_count)
+            .map(|(i, v)| format!(" {:<width$} ", v, width = widths[i]))
+            .collect();
+        format!("|{}|", cells.join("|"))
+    };
+
+    let mut output = String::new();
+    output.push_str(&separator);
+    output.push('\n');
+    output.push_str(&format_row(headers));
+    output.push('\n');
+    output.push_str(&separator);
+    for row in rows {
+        output.push('\n');
+        output.push_str(&format_row(row));
+    }
+    output.push('\n');
+    output.push_str(&separator);
+    output.push('\n');
+    output.push_str(&format!("({} rows)", rows.len()));
+    output
 }

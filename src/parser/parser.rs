@@ -80,6 +80,10 @@ impl Parser {
                 self.parse_insert_into()
             }
             Some(Token::Keyword(k)) if k == "USE" => self.parse_use(),
+            Some(Token::Keyword(k)) if k == "SELECT" => {
+                self.advance();
+                self.parse_select()
+            }
             Some(token) => Err(DbError::ParseError(format!("Unexpected token: {:?}", token))),
             None => Err(DbError::ParseError("Empty input".into())),
         }
