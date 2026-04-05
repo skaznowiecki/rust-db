@@ -1,0 +1,11 @@
+use crate::parser::ast::{Statement, UseDatabase};
+use super::super::parser::Parser;
+
+impl Parser {
+    pub(crate) fn parse_use(&mut self) -> Result<Statement, String> {
+        self.advance(); // consume USE
+        let name = self.expect_identifier()?;
+        self.consume_optional_semicolon();
+        Ok(Statement::Use(UseDatabase { name }))
+    }
+}
