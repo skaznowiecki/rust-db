@@ -2,45 +2,39 @@ use std::fs;
 use std::path::Path;
 
 use crate::error::DbError;
-use crate::storage::constants::{CATALOG_ID, DATA_DIR};
+use crate::storage::catalog::{find_by_name, parse_catalog};
+use crate::constants;
 use crate::storage::schema;
 
 pub fn delete_table(db_name: &str, table_name: &str) -> Result<(), DbError> {
-    let db_path = format!("{}/{}", DATA_DIR, db_name);
-
-    if !Path::new(&db_path).exists() {
+    if !Path::new(&constants::db_path(db_name)).exists() {
         return Err(DbError::DatabaseNotFound(db_name.into()));
     }
 
-    let catalog_data_path = format!("{}/{}/data", db_path, CATALOG_ID);
-    let catalog_content = fs::read_to_string(&catalog_data_path)?;
+    let catalog_path = constants::catalog_data_path(db_name);
+    let catalog_content = fs::read_to_string(&catalog_path)?;
+    let entries = parse_catalog(&catalog_content);
 
-    let mut table_id: Option<String> = None;
-    let mut remaining_lines = Vec::new();
+    let entry = find_by_name(&entries, table_name)
+        .ok_or(DbError::TableNotFound(table_name.into()))?;
+    let table_id = entry.id.clone();
 
-    for line in catalog_content.lines() {
-        let fields: Vec<&str> = line.split('|').collect();
-        if fields.len() >= 2 && fields[1] == table_name {
-            table_id = Some(fields[0].to_string());
-        } else {
-            remaining_lines.push(line);
-        }
-    }
+    let new_content: String = entries
+        .iter()
+        .filter(|e| e.name != table_name)
+        .map(|e| format!("{}|{}|{}", e.id, e.name, e.engine))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let new_catalog = if new_content.is_empty() {
+        String::new()
+    } else {
+        format!("{}\n", new_content)
+    };
+    fs::write(&catalog_path, &new_catalog)?;
 
-    let table_id = table_id.ok_or(DbError::TableNotFound(table_name.into()))?;
+    fs::remove_dir_all(constants::table_dir_path(db_name, &table_id))?;
 
-    let mut new_catalog = remaining_lines.join("\n");
-    if !new_catalog.is_empty() {
-        new_catalog.push('\n');
-    }
-    fs::write(&catalog_data_path, &new_catalog)?;
-
-    let table_path = format!("{}/{}", db_path, table_id);
-    fs::remove_dir_all(&table_path)?;
-
-    let mut db_schema = schema::load(db_name)?;
-    db_schema.remove(&table_id);
-    schema::save(db_name, &db_schema)?;
+    schema::remove_table(db_name, &table_id)?;
 
     Ok(())
 }

@@ -7,9 +7,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::engine::engine::{Engine, ExecuteResult};
-
-const PID_FILE: &str = "./data/db.pid";
-const FLUSH_INTERVAL_SECS: u64 = 5;
+use crate::constants::{FLUSH_INTERVAL_SECS, PID_FILE};
 
 pub struct ServerProvider {
     pub port: u16,

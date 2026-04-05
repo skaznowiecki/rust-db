@@ -2,16 +2,16 @@ use std::fs;
 use std::path::Path;
 
 use crate::error::DbError;
-use crate::storage::constants::DATA_DIR;
+use crate::constants;
 
 pub fn delete_database(name: &str) -> Result<(), DbError> {
-    let db_path = format!("{}/{}", DATA_DIR, name);
+    let path = constants::db_path(name);
 
-    if !Path::new(&db_path).exists() {
+    if !Path::new(&path).exists() {
         return Err(DbError::DatabaseNotFound(name.into()));
     }
 
-    fs::remove_dir_all(&db_path)?;
+    fs::remove_dir_all(&path)?;
 
     Ok(())
 }

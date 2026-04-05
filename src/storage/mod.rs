@@ -1,5 +1,4 @@
 pub mod catalog;
-pub mod constants;
 pub mod file_utils;
 pub mod schema;
 mod statements;

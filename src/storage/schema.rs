@@ -5,7 +5,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 use crate::error::DbError;
-use super::constants::DATA_DIR;
+use crate::constants::DATA_DIR;
 use crate::parser::ast::ColumnDef;
 
 pub type DbSchema = HashMap<String, TableSchema>;
@@ -28,7 +28,36 @@ pub fn load(db_name: &str) -> Result<DbSchema, DbError> {
     serde_json::from_str(&content).map_err(|e| DbError::IoError(format!("Failed to parse schema: {}", e)))
 }
 
-pub fn save(db_name: &str, schema: &DbSchema) -> Result<(), DbError> {
+pub fn create_initial(db_name: &str) -> Result<(), DbError> {
+    use crate::constants::CATALOG_ID;
+    use crate::storage::catalog::catalog_columns;
+
+    let mut db_schema = HashMap::new();
+    db_schema.insert(
+        CATALOG_ID.to_string(),
+        TableSchema {
+            columns: catalog_columns(),
+        },
+    );
+    save(db_name, &db_schema)
+}
+
+pub fn add_table(db_name: &str, table_id: &str, columns: Vec<ColumnDef>) -> Result<(), DbError> {
+    let mut db_schema = load(db_name)?;
+    db_schema.insert(
+        table_id.to_string(),
+        TableSchema { columns },
+    );
+    save(db_name, &db_schema)
+}
+
+pub fn remove_table(db_name: &str, table_id: &str) -> Result<(), DbError> {
+    let mut db_schema = load(db_name)?;
+    db_schema.remove(table_id);
+    save(db_name, &db_schema)
+}
+
+fn save(db_name: &str, schema: &DbSchema) -> Result<(), DbError> {
     let content = serde_json::to_string_pretty(schema)
         .map_err(|e| DbError::IoError(format!("Failed to serialize schema: {}", e)))?;
     fs::write(schema_path(db_name), content)?;

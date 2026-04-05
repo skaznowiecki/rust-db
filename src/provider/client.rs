@@ -1,7 +1,7 @@
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 
-const DEFAULT_PORT: u16 = 5433;
+use crate::constants::DEFAULT_PORT;
 
 /// Persistent connection to the server
 pub struct Connection {

@@ -1,31 +1,22 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
 use crate::error::DbError;
-use crate::storage::catalog::catalog_columns;
-use crate::storage::constants::{CATALOG_ID, DATA_DIR};
-use crate::storage::schema::{self, TableSchema};
+use crate::constants::{self, CATALOG_ID};
+use crate::storage::schema;
 
 pub fn create_database(name: &str) -> Result<(), DbError> {
-    let db_path = format!("{}/{}", DATA_DIR, name);
+    let path = constants::db_path(name);
 
-    if Path::new(&db_path).exists() {
+    if Path::new(&path).exists() {
         return Err(DbError::DatabaseAlreadyExists(name.into()));
     }
 
-    let catalog_path = format!("{}/{}", db_path, CATALOG_ID);
-    fs::create_dir_all(&catalog_path)?;
-    fs::write(format!("{}/data", catalog_path), "")?;
+    let catalog_dir = constants::table_dir_path(name, &CATALOG_ID.to_string());
+    fs::create_dir_all(&catalog_dir)?;
+    fs::write(constants::catalog_data_path(name), "")?;
 
-    let mut db_schema = HashMap::new();
-    db_schema.insert(
-        CATALOG_ID.to_string(),
-        TableSchema {
-            columns: catalog_columns(),
-        },
-    );
-    schema::save(name, &db_schema)?;
+    schema::create_initial(name)?;
 
     Ok(())
 }

@@ -3,11 +3,9 @@ use std::io::Write;
 
 use crate::error::DbError;
 use crate::parser::ast::{DataType, DefaultValue, InsertInto, Value};
-use crate::storage::constants::DATA_DIR;
+use crate::constants::{self, BUFFER_SIZE};
 use crate::storage::file_utils::read_last_line;
 use crate::storage::schema::TableSchema;
-
-const BUFFER_SIZE: usize = 200 * 1024; // 200KB
 
 pub struct Table {
     pub id: String,
@@ -20,21 +18,8 @@ pub struct Table {
 
 impl Table {
     pub fn load(db_name: &str, table_id: &str, table_name: &str, schema: TableSchema) -> Self {
-        let serial_pos = schema
-            .columns
-            .iter()
-            .position(|c| c.data_type == DataType::Serial);
-
-        let serial_counter = serial_pos.map(|pos| {
-            let data_path = format!("{}/{}/{}/data", DATA_DIR, db_name, table_id);
-            match read_last_line(&data_path) {
-                Ok(Some(line)) => {
-                    let field = line.split('|').nth(pos).unwrap_or("0");
-                    field.parse::<i64>().unwrap_or(0)
-                }
-                _ => 0,
-            }
-        });
+        let serial_counter = Self::find_serial_pos(&schema)
+            .map(|pos| Self::read_serial_from_disk(db_name, table_id, pos));
 
         Self {
             id: table_id.to_string(),
@@ -61,26 +46,32 @@ impl Table {
         }
     }
 
-    fn data_path(&self) -> String {
-        format!("{}/{}/{}/data", DATA_DIR, self.db_name, self.id)
+    fn find_serial_pos(schema: &TableSchema) -> Option<usize> {
+        schema
+            .columns
+            .iter()
+            .position(|c| c.data_type == DataType::Serial)
+    }
+
+    fn read_serial_from_disk(db_name: &str, table_id: &str, serial_pos: usize) -> i64 {
+        let path = constants::table_data_path(db_name, table_id);
+        match read_last_line(&path) {
+            Ok(Some(line)) => {
+                let field = line.split('|').nth(serial_pos).unwrap_or("0");
+                field.parse::<i64>().unwrap_or(0)
+            }
+            _ => 0,
+        }
     }
 
     fn next_serial(&mut self) -> i64 {
+        let db_name = self.db_name.clone();
+        let table_id = self.id.clone();
+        let schema = &self.schema;
+
         let counter = self.serial_counter.get_or_insert_with(|| {
-            let data_path = format!("{}/{}/{}/data", DATA_DIR, self.db_name, self.id);
-            match read_last_line(&data_path) {
-                Ok(Some(line)) => {
-                    let serial_pos = self
-                        .schema
-                        .columns
-                        .iter()
-                        .position(|c| c.data_type == DataType::Serial)
-                        .unwrap_or(0);
-                    let field = line.split('|').nth(serial_pos).unwrap_or("0");
-                    field.parse::<i64>().unwrap_or(0)
-                }
-                _ => 0,
-            }
+            let pos = Self::find_serial_pos(schema).unwrap_or(0);
+            Self::read_serial_from_disk(&db_name, &table_id, pos)
         });
         *counter += 1;
         *counter
@@ -126,12 +117,7 @@ impl Table {
     }
 
     fn build_row(&mut self, insert: &InsertInto) -> Result<String, DbError> {
-        let has_serial = self
-            .schema
-            .columns
-            .iter()
-            .any(|c| c.data_type == DataType::Serial);
-        let serial_val = if has_serial {
+        let serial_val = Self::find_serial_pos(&self.schema).and_then(|_| {
             let serial_col = self
                 .schema
                 .columns
@@ -143,9 +129,7 @@ impl Table {
             } else {
                 Some(self.next_serial())
             }
-        } else {
-            None
-        };
+        });
 
         let mut row_values: Vec<String> = Vec::new();
 
@@ -188,10 +172,11 @@ impl Table {
             return Ok(());
         }
 
+        let path = constants::table_data_path(&self.db_name, &self.id);
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
-            .open(self.data_path())?;
+            .open(path)?;
         file.write_all(&self.write_buffer)?;
         self.write_buffer.clear();
 
