@@ -1,4 +1,4 @@
-# db
+# rust-db
 
 A custom database engine written in Rust, inspired by PostgreSQL and ClickHouse.
 
