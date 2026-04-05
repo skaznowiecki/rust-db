@@ -2,3 +2,4 @@
 /data
 schema.json
 scripts/setup.sh
+bench.sh
