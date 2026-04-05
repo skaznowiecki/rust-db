@@ -117,28 +117,21 @@ src/
 
 ## Roadmap
 
-### Phase 1 — Concurrency & Performance ✓
-| Feature | Status | Description |
-|---|---|---|
-| Multi-threaded server | Done | Each client connection handled in its own thread |
-| Background flush | Done | Timer thread flushes write buffers every 5 seconds |
-| Catalog cache | Done | Table name → Table mapping loaded in memory via Database struct |
-
-### Phase 2 — Query Engine
+### Phase 1 — Query Engine
 | Feature | Description |
 |---|---|
 | `SELECT` | Basic queries with `WHERE` filtering and comparison operators |
 | `UPDATE` | Modify existing rows |
 | `DELETE` | Remove rows |
 
-### Phase 3 — Storage Engine
+### Phase 2 — Storage Engine
 | Feature | Description |
 |---|---|
 | Binary format | Page-based storage replacing pipe-delimited text |
 | B-tree indexes | Indexed lookups for faster queries |
 | WAL | Write-ahead log for crash recovery |
 
-### Phase 4 — Advanced
+### Phase 3 — Advanced
 | Feature | Description |
 |---|---|
 | Query planner | Cost-based optimization for query execution |
