@@ -193,6 +193,10 @@ src/
 | Feature | Status | Description |
 |---|---|---|
 | `SELECT` | Done | Column projection, `WHERE` (all comparison operators, `LIKE`/`ILIKE`, `IN`, `BETWEEN`, `AND`/`OR`, parentheses), `LIMIT` |
+| `ORDER BY` | Pending | Sort results by one or more columns (`ASC`/`DESC`) |
+| Aggregations | Pending | `COUNT`, `SUM`, `AVG`, `MIN`, `MAX` |
+| `GROUP BY` | Pending | Group results by column with aggregation functions |
+| `HAVING` | Pending | Filter groups after aggregation |
 | `UPDATE` | Pending | Modify existing rows |
 | `DELETE` | Pending | Remove rows |
 
