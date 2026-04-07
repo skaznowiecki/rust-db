@@ -9,6 +9,7 @@ const KEYWORDS: &[&str] = &[
     "TRUE", "FALSE",
     "SELECT", "FROM", "WHERE", "LIMIT",
     "LIKE", "ILIKE",
+    "AND", "OR", "IN", "BETWEEN",
 ];
 
 pub fn tokenize(input: &str) -> Result<Vec<Token>, DbError> {
@@ -27,8 +28,26 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, DbError> {
             ')' => { tokens.push(Token::RightParen); chars.next(); continue; }
             ',' => { tokens.push(Token::Comma); chars.next(); continue; }
             '=' => { tokens.push(Token::Equals); chars.next(); continue; }
-            '<' => { tokens.push(Token::LessThan); chars.next(); continue; }
-            '>' => { tokens.push(Token::GreaterThan); chars.next(); continue; }
+            '<' => {
+                chars.next();
+                if chars.peek() == Some(&'=') {
+                    chars.next();
+                    tokens.push(Token::LessThanEquals);
+                } else {
+                    tokens.push(Token::LessThan);
+                }
+                continue;
+            }
+            '>' => {
+                chars.next();
+                if chars.peek() == Some(&'=') {
+                    chars.next();
+                    tokens.push(Token::GreaterThanEquals);
+                } else {
+                    tokens.push(Token::GreaterThan);
+                }
+                continue;
+            }
             '!' => {
                 chars.next();
                 if chars.peek() == Some(&'=') {

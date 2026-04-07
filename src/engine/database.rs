@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 
 use crate::error::DbError;
-use crate::parser::ast::{CreateTable, InsertInto, WhereClause};
+use crate::parser::ast::{CreateTable, InsertInto, WhereExpr};
 use crate::storage;
 use crate::storage::catalog::{find_by_name, parse_catalog};
 use crate::constants;
@@ -45,7 +45,7 @@ impl Database {
             .ok_or(DbError::TableNotFound(name.into()))
     }
 
-    pub fn select(&mut self, table: &str, where_clause: Option<&WhereClause>, limit: Option<usize>) -> Result<(Vec<String>, Vec<Vec<String>>), DbError> {
+    pub fn select(&mut self, table: &str, where_clause: Option<&WhereExpr>, limit: Option<usize>) -> Result<(Vec<String>, Vec<Vec<String>>), DbError> {
         let tbl = self.get_table_mut(table)?;
         tbl.flush()?;
         let headers: Vec<String> = tbl.schema.columns.iter().map(|c| c.name.clone()).collect();

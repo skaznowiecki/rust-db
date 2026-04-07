@@ -29,7 +29,7 @@ pub enum Value {
 #[derive(Debug, PartialEq)]
 pub struct Select {
     pub table: String,
-    pub where_clause: Option<WhereClause>,
+    pub where_clause: Option<WhereExpr>,
     pub limit: Option<usize>,
 }
 
@@ -38,16 +38,20 @@ pub enum Operator {
     Eq,
     NotEq,
     Lt,
+    Lte,
     Gt,
+    Gte,
     Like,
     ILike,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct WhereClause {
-    pub column: String,
-    pub operator: Operator,
-    pub value: Value,
+pub enum WhereExpr {
+    Comparison { column: String, operator: Operator, value: Value },
+    In { column: String, values: Vec<Value> },
+    Between { column: String, low: Value, high: Value },
+    And(Box<WhereExpr>, Box<WhereExpr>),
+    Or(Box<WhereExpr>, Box<WhereExpr>),
 }
 
 #[derive(Debug, PartialEq)]

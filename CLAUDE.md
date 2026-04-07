@@ -28,7 +28,7 @@ The table logic is split into focused modules under `src/engine/table/`:
 - `mod.rs` — struct definition, construction, flush, Drop
 - `insert.rs` — validation, row building, insert, serial counter
 - `scan.rs` — full table scan with WHERE and LIMIT
-- `filter.rs` — WHERE operator evaluation (=, !=, <, >, LIKE, ILIKE)
+- `filter.rs` — WHERE evaluation: operators (=, !=, <, <=, >, >=, LIKE, ILIKE), IN, BETWEEN, and recursive AND/OR with parentheses via `WhereExpr` tree
 
 New table operations (DELETE, UPDATE, aggregations) get their own file. New WHERE operators go in `filter.rs`.
 

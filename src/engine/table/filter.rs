@@ -1,11 +1,50 @@
-use crate::parser::ast::{Operator, Value};
+use crate::parser::ast::{Operator, Value, WhereExpr};
 
-pub(crate) fn match_value(field: &str, operator: &Operator, value: &Value) -> bool {
+pub(crate) fn eval_where(
+    fields: &[String],
+    col_lookup: &dyn Fn(&str) -> Option<usize>,
+    expr: &WhereExpr,
+) -> bool {
+    match expr {
+        WhereExpr::Comparison { column, operator, value } => {
+            let field = match col_lookup(column) {
+                Some(idx) => fields.get(idx).map(|s| s.as_str()).unwrap_or(""),
+                None => return false,
+            };
+            match_value(field, operator, value)
+        }
+        WhereExpr::In { column, values } => {
+            let field = match col_lookup(column) {
+                Some(idx) => fields.get(idx).map(|s| s.as_str()).unwrap_or(""),
+                None => return false,
+            };
+            values.iter().any(|v| match_eq(field, v))
+        }
+        WhereExpr::Between { column, low, high } => {
+            let field = match col_lookup(column) {
+                Some(idx) => fields.get(idx).map(|s| s.as_str()).unwrap_or(""),
+                None => return false,
+            };
+            !match_cmp(field, low, std::cmp::Ordering::Less)
+                && !match_cmp(field, high, std::cmp::Ordering::Greater)
+        }
+        WhereExpr::And(a, b) => {
+            eval_where(fields, col_lookup, a) && eval_where(fields, col_lookup, b)
+        }
+        WhereExpr::Or(a, b) => {
+            eval_where(fields, col_lookup, a) || eval_where(fields, col_lookup, b)
+        }
+    }
+}
+
+fn match_value(field: &str, operator: &Operator, value: &Value) -> bool {
     match operator {
         Operator::Eq => match_eq(field, value),
         Operator::NotEq => !match_eq(field, value),
         Operator::Lt => match_cmp(field, value, std::cmp::Ordering::Less),
+        Operator::Lte => match_cmp(field, value, std::cmp::Ordering::Less) || match_eq(field, value),
         Operator::Gt => match_cmp(field, value, std::cmp::Ordering::Greater),
+        Operator::Gte => match_cmp(field, value, std::cmp::Ordering::Greater) || match_eq(field, value),
         Operator::Like => match_like(field, value, false),
         Operator::ILike => match_like(field, value, true),
     }
