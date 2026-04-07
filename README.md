@@ -12,7 +12,7 @@ This is a personal learning project by [Sergio Kaznowiecki](https://github.com/s
   - `CREATE DATABASE`, `DROP DATABASE`
   - `CREATE TABLE` with types and constraints, `DROP TABLE`
   - `INSERT INTO` with field and type validation
-  - `SELECT * FROM` with `WHERE` filtering and `LIMIT`
+  - `SELECT * FROM` with `WHERE` filtering (`=`, `!=`, `<`, `>`, `LIKE`, `ILIKE`) and `LIMIT`
   - `USE` to switch databases
 
 - **Data Types** — `SERIAL`, `INTEGER`, `VARCHAR(n)`, `TEXT`, `BOOLEAN`
@@ -32,9 +32,11 @@ This is a personal learning project by [Sergio Kaznowiecki](https://github.com/s
   - Multi-threaded TCP server on `localhost:5433` (one thread per connection)
   - Background flush thread (every 5 seconds)
   - Persistent connections (one TCP connection per REPL session)
-  - Interactive REPL with command history (`db connect`)
+  - Interactive REPL with persistent command history across sessions (`db connect`)
   - Single-command mode (`db exec`)
   - Background server with `db start` / `db stop` / `db info`
+
+- **Query Timing** — Displays execution time after each query result
 
 - **Custom Error Types** — Typed `DbError` enum instead of string errors
 
@@ -82,6 +84,12 @@ SELECT * FROM productos WHERE precio = 2500;
 -- | 2  | Mouse Logitech | 2500   | 200   | true   |
 -- +----+----------------+--------+-------+--------+
 -- (1 rows)
+-- Time: 0.045ms
+
+SELECT * FROM productos WHERE precio > 5000;
+SELECT * FROM productos WHERE nombre != 'Teclado HP';
+SELECT * FROM productos WHERE nombre LIKE '%Sony%';
+SELECT * FROM productos WHERE nombre ILIKE '%samsung%';
 
 SELECT * FROM productos LIMIT 2;
 -- +----+----------------+--------+-------+--------+
@@ -175,8 +183,8 @@ src/
 ### Phase 1 — Query Engine
 | Feature | Status | Description |
 |---|---|---|
-| `SELECT` | Done | Basic queries with `WHERE` equality filtering and `LIMIT` |
-| `SELECT` operators | Pending | `>`, `<`, `>=`, `<=`, `!=`, `AND`, `OR` |
+| `SELECT` | Done | Queries with `WHERE` (`=`, `!=`, `<`, `>`, `LIKE`, `ILIKE`) and `LIMIT` |
+| `SELECT` operators | Pending | `>=`, `<=`, `AND`, `OR`, `IN`, `BETWEEN` |
 | `UPDATE` | Pending | Modify existing rows |
 | `DELETE` | Pending | Remove rows |
 
