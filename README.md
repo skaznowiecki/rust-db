@@ -161,14 +161,18 @@ src/
 ├── constants.rs             Paths, buffer size, port
 ├── error.rs                 DbError enum
 ├── engine/
-│   ├── engine.rs            Engine (orchestration, table formatting)
+│   ├── engine.rs            Engine (orchestration, column projection, table formatting)
 │   ├── database.rs          Database (manages tables, catalog)
-│   └── table.rs             Table (schema, serial, validation, insert, scan, buffer)
+│   └── table/
+│       ├── mod.rs            Table struct, construction, flush, buffer
+│       ├── insert.rs         Validation, row building, insert, serial counter
+│       ├── scan.rs           Full table scan with WHERE and LIMIT
+│       └── filter.rs         WHERE evaluation (operators, IN, BETWEEN, AND/OR)
 ├── lexer/
 │   ├── token.rs             Token enum
 │   └── lexer.rs             Tokenizer
 ├── parser/
-│   ├── ast.rs               AST types (Statement, Value, DataType, WhereClause, etc.)
+│   ├── ast.rs               AST types (Statement, Value, DataType, WhereExpr, etc.)
 │   ├── parser.rs            Parser core + dispatch
 │   └── statements/          One file per SQL statement (select, insert_into, etc.)
 ├── provider/
