@@ -27,8 +27,15 @@ pub enum Value {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum SelectColumns {
+    All,
+    Columns(Vec<String>),
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Select {
     pub table: String,
+    pub columns: SelectColumns,
     pub where_clause: Option<WhereExpr>,
     pub limit: Option<usize>,
 }

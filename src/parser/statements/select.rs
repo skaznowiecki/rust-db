@@ -1,11 +1,22 @@
 use super::super::parser::Parser;
 use crate::error::DbError;
 use crate::lexer::token::Token;
-use crate::parser::ast::{Operator, Select, Statement, Value, WhereExpr};
+use crate::parser::ast::{Operator, Select, SelectColumns, Statement, Value, WhereExpr};
 
 impl Parser {
     pub(crate) fn parse_select(&mut self) -> Result<Statement, DbError> {
-        self.expect_token(&Token::Asterisk)?;
+        let columns = if matches!(self.peek(), Some(Token::Asterisk)) {
+            self.advance();
+            SelectColumns::All
+        } else {
+            let mut cols = vec![self.expect_identifier()?];
+            while matches!(self.peek(), Some(Token::Comma)) {
+                self.advance();
+                cols.push(self.expect_identifier()?);
+            }
+            SelectColumns::Columns(cols)
+        };
+
         self.expect_keyword("FROM")?;
         let table = self.expect_identifier()?;
 
@@ -47,6 +58,7 @@ impl Parser {
 
         Ok(Statement::Select(Select {
             table,
+            columns,
             where_clause,
             limit,
         }))

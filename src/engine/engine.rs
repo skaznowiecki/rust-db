@@ -1,6 +1,6 @@
 use crate::error::DbError;
 use crate::parser;
-use crate::parser::ast::Statement;
+use crate::parser::ast::{SelectColumns, Statement};
 use crate::storage;
 
 use super::database::Database;
@@ -84,6 +84,27 @@ impl Engine {
             Statement::Select(select) => {
                 let db = self.require_db()?;
                 let (headers, rows) = db.select(&select.table, select.where_clause.as_ref(), select.limit)?;
+
+                let (headers, rows) = match &select.columns {
+                    SelectColumns::All => (headers, rows),
+                    SelectColumns::Columns(cols) => {
+                        let indices: Vec<usize> = cols.iter().map(|c| {
+                            headers.iter().position(|h| h == c)
+                                .ok_or(DbError::ColumnNotFound {
+                                    column: c.clone(),
+                                    table: select.table.clone(),
+                                })
+                        }).collect::<Result<Vec<_>, _>>()?;
+
+                        let proj_headers = indices.iter().map(|&i| headers[i].clone()).collect();
+                        let proj_rows = rows.iter().map(|row| {
+                            indices.iter().map(|&i| row[i].clone()).collect()
+                        }).collect();
+
+                        (proj_headers, proj_rows)
+                    }
+                };
+
                 let output = format_table(&headers, &rows);
                 Ok(ExecuteResult::Message(output))
             }

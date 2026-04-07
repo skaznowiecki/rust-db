@@ -12,7 +12,7 @@ This is a personal learning project by [Sergio Kaznowiecki](https://github.com/s
   - `CREATE DATABASE`, `DROP DATABASE`
   - `CREATE TABLE` with types and constraints, `DROP TABLE`
   - `INSERT INTO` with field and type validation
-  - `SELECT * FROM` with `WHERE` filtering (`=`, `!=`, `<`, `<=`, `>`, `>=`, `LIKE`, `ILIKE`, `IN`, `BETWEEN`), compound conditions (`AND`, `OR`, parentheses), and `LIMIT`
+  - `SELECT` with specific columns or `*`, `WHERE` filtering (`=`, `!=`, `<`, `<=`, `>`, `>=`, `LIKE`, `ILIKE`, `IN`, `BETWEEN`), compound conditions (`AND`, `OR`, parentheses), and `LIMIT`
   - `USE` to switch databases
 
 - **Data Types** — `SERIAL`, `INTEGER`, `VARCHAR(n)`, `TEXT`, `BOOLEAN`
@@ -93,6 +93,7 @@ SELECT * FROM productos WHERE nombre LIKE '%Sony%';
 SELECT * FROM productos WHERE nombre ILIKE '%samsung%';
 SELECT * FROM productos WHERE nombre IN ('Laptop Samsung', 'Monitor LG');
 SELECT * FROM productos WHERE precio BETWEEN 2000 AND 10000;
+SELECT nombre, precio FROM productos WHERE precio > 5000;
 SELECT * FROM productos WHERE (precio > 10000 OR stock = 0) AND activo = TRUE;
 
 SELECT * FROM productos LIMIT 2;
@@ -187,7 +188,7 @@ src/
 ### Phase 1 — Query Engine
 | Feature | Status | Description |
 |---|---|---|
-| `SELECT` | Done | Queries with `WHERE` (all comparison operators, `LIKE`/`ILIKE`, `IN`, `BETWEEN`, `AND`/`OR`, parentheses) and `LIMIT` |
+| `SELECT` | Done | Column projection, `WHERE` (all comparison operators, `LIKE`/`ILIKE`, `IN`, `BETWEEN`, `AND`/`OR`, parentheses), `LIMIT` |
 | `UPDATE` | Pending | Modify existing rows |
 | `DELETE` | Pending | Remove rows |
 
