@@ -22,6 +22,16 @@ Each stage has a single responsibility and communicates only through its output 
 
 Each SQL statement (SELECT, INSERT, CREATE TABLE, etc.) has its own file under `src/parser/statements/`. The main parser dispatches to the correct file based on the first keyword. This keeps each parser small and focused.
 
+## Single-Responsibility Modules (Table)
+
+The table logic is split into focused modules under `src/engine/table/`:
+- `mod.rs` — struct definition, construction, flush, Drop
+- `insert.rs` — validation, row building, insert, serial counter
+- `scan.rs` — full table scan with WHERE and LIMIT
+- `filter.rs` — WHERE operator evaluation (=, !=, <, >, LIKE, ILIKE)
+
+New table operations (DELETE, UPDATE, aggregations) get their own file. New WHERE operators go in `filter.rs`.
+
 ## Catalog Pattern (Storage)
 
 Every database has a catalog table (ID 1000) that tracks which tables exist and their IDs. Table schemas are stored as JSON files. This is how the engine discovers tables on startup without hardcoding anything.
