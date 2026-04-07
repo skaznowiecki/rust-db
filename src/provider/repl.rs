@@ -1,6 +1,9 @@
+use std::time::Instant;
+
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 
+use crate::constants::HISTORY_FILE;
 use crate::engine::engine::{Engine, ExecuteResult};
 use super::client::{self, Connection};
 use super::Provider;
@@ -34,6 +37,7 @@ impl Provider for ReplProvider {
 impl ReplProvider {
     fn run_local(&self, engine: &mut Engine) {
         let mut rl = DefaultEditor::new().unwrap();
+        let _ = rl.load_history(HISTORY_FILE);
         println!("Type your SQL statements. Ctrl+C to exit.\n");
 
         loop {
@@ -49,9 +53,15 @@ impl ReplProvider {
                         continue;
                     }
                     let _ = rl.add_history_entry(input);
+                    let _ = rl.save_history(HISTORY_FILE);
 
+                    let start = Instant::now();
                     match engine.execute(input) {
-                        Ok(ExecuteResult::Message(msg)) => println!("{}", msg),
+                        Ok(ExecuteResult::Message(msg)) => {
+                            let elapsed = start.elapsed();
+                            println!("{}", msg);
+                            println!("Time: {:.3}ms", elapsed.as_secs_f64() * 1000.0);
+                        }
                         Ok(ExecuteResult::DbChanged(name)) => {
                             println!("Using database '{}'", name);
                         }
@@ -77,6 +87,7 @@ impl ReplProvider {
         };
 
         let mut rl = DefaultEditor::new().unwrap();
+        let _ = rl.load_history(HISTORY_FILE);
         println!("Type your SQL statements. Ctrl+C to exit.\n");
 
         let mut current_db: Option<String> = None;
@@ -94,12 +105,18 @@ impl ReplProvider {
                         continue;
                     }
                     let _ = rl.add_history_entry(input);
+                    let _ = rl.save_history(HISTORY_FILE);
 
+                    let start = Instant::now();
                     match conn.send(input) {
                         Ok(response) => {
+                            let elapsed = start.elapsed();
                             let (kind, msg) = client::parse_response(&response);
                             match kind {
-                                "OK" => println!("{}", msg),
+                                "OK" => {
+                                    println!("{}", msg);
+                                    println!("Time: {:.3}ms", elapsed.as_secs_f64() * 1000.0);
+                                }
                                 "DB" => {
                                     println!("Using database '{}'", msg);
                                     current_db = Some(msg.to_string());

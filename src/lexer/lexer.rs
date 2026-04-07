@@ -8,6 +8,7 @@ const KEYWORDS: &[&str] = &[
     "PRIMARY", "KEY", "NOT", "NULL", "UNIQUE", "DEFAULT",
     "TRUE", "FALSE",
     "SELECT", "FROM", "WHERE", "LIMIT",
+    "LIKE", "ILIKE",
 ];
 
 pub fn tokenize(input: &str) -> Result<Vec<Token>, DbError> {
@@ -26,6 +27,18 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, DbError> {
             ')' => { tokens.push(Token::RightParen); chars.next(); continue; }
             ',' => { tokens.push(Token::Comma); chars.next(); continue; }
             '=' => { tokens.push(Token::Equals); chars.next(); continue; }
+            '<' => { tokens.push(Token::LessThan); chars.next(); continue; }
+            '>' => { tokens.push(Token::GreaterThan); chars.next(); continue; }
+            '!' => {
+                chars.next();
+                if chars.peek() == Some(&'=') {
+                    chars.next();
+                    tokens.push(Token::NotEquals);
+                } else {
+                    return Err(DbError::LexerError("Expected '=' after '!'".into()));
+                }
+                continue;
+            }
             '*' => { tokens.push(Token::Asterisk); chars.next(); continue; }
             _ => {}
         }

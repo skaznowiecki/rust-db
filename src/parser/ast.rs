@@ -34,8 +34,19 @@ pub struct Select {
 }
 
 #[derive(Debug, PartialEq)]
+pub enum Operator {
+    Eq,
+    NotEq,
+    Lt,
+    Gt,
+    Like,
+    ILike,
+}
+
+#[derive(Debug, PartialEq)]
 pub struct WhereClause {
     pub column: String,
+    pub operator: Operator,
     pub value: Value,
 }
 

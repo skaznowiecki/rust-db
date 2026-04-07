@@ -9,5 +9,8 @@ pub enum Token {
     Comma,
     Semicolon,
     Equals,
+    NotEquals,
+    LessThan,
+    GreaterThan,
     Asterisk,
 }

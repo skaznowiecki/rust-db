@@ -10,6 +10,7 @@ pub const BUFFER_SIZE: usize = 200 * 1024; // 200KB
 pub const DEFAULT_PORT: u16 = 5433;
 pub const FLUSH_INTERVAL_SECS: u64 = 5;
 pub const PID_FILE: &str = "./data/db.pid";
+pub const HISTORY_FILE: &str = "./data/history";
 
 // Path helpers
 
