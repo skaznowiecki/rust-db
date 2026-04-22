@@ -48,5 +48,5 @@ The REPL (`db connect`) tries to connect to a running server first. If no server
 
 - **Text storage**: Row data is pipe-delimited (`|`), one row per line. Simple, readable, grep-friendly.
 - **Numeric IDs for tables**: Tables get auto-incrementing IDs (starting at 1001). Directories are named by ID, not table name. This avoids filesystem issues with special characters.
-- **Error handling**: All errors use the `DbError` enum — no `.unwrap()` in business logic, no string errors.
-- **No external DB dependencies**: The lexer, parser, and engine are hand-written. Only external crates are `rustyline` (REPL), `serde` (JSON), and `libc` (process management).
+- **Error handling**: Surface failures with the `DbError` enum; avoid ad-hoc string errors. Prefer `Result` and `?` in the engine; do not `unwrap` on paths that should return a user-facing error. Reserve `expect`/`unwrap` only for bugs or OS/bootstrap code where recovery is not meaningful.
+- **No external DB dependencies**: The lexer, parser, and engine are hand-written. External crates: `rustyline` (REPL), `serde` + `serde_json` (schema and catalog JSON on disk), and `libc` (process management). Do not add database driver crates for the engine core.

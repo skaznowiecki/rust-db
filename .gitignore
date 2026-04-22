@@ -1,5 +1,6 @@
 /target
 /data
+.DS_Store
 schema.json
 scripts/
 bench_setup.sql
