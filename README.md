@@ -9,7 +9,7 @@ This is a personal learning project by [Sergio Kaznowiecki](https://github.com/s
 ## Current Features
 
 - **SQL Parser** — Hand-written lexer and parser (no dependencies) supporting:
-  - `CREATE DATABASE`, `DROP DATABASE`
+  - `CREATE DATABASE`, `DROP DATABASE`, `SHOW DATABASES`
   - `CREATE TABLE` with types and constraints, `DROP TABLE`
   - `INSERT INTO` with field and type validation
   - `SELECT` with specific columns or `*`, `WHERE` filtering (`=`, `!=`, `<`, `<=`, `>`, `>=`, `LIKE`, `ILIKE`, `IN`, `BETWEEN`), compound conditions (`AND`, `OR`, parentheses), and `LIMIT`
@@ -48,6 +48,14 @@ This is a personal learning project by [Sergio Kaznowiecki](https://github.com/s
 ```
 
 ```sql
+SHOW DATABASES;
+-- +-----------+
+-- | Database  |
+-- +-----------+
+-- | ecommerce |
+-- +-----------+
+-- (1 rows)
+
 CREATE DATABASE ecommerce;
 USE ecommerce;
 
@@ -131,6 +139,7 @@ cargo build --release
 ./target/release/db connect
 
 # Single command
+./target/release/db exec "SHOW DATABASES"
 ./target/release/db exec "CREATE DATABASE myapp"
 ./target/release/db exec --db myapp "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL)"
 ./target/release/db exec --db myapp "INSERT INTO users (name) VALUES ('John')"
@@ -145,6 +154,52 @@ cargo build --release
 ### Run without server (local mode)
 
 If no server is running, `connect` and `exec` work in local mode automatically.
+
+### Connect to the REPL
+
+```bash
+# 1. Build (first time, or after code changes)
+cargo build --release
+
+# 2. Optional: start the server in background
+./target/release/db start
+
+# 3. Open the interactive REPL
+./target/release/db connect
+```
+
+If the server is running, `connect` attaches to it on `localhost:5433`. If not, it falls back to local mode automatically. During development you can also use `cargo run -- connect` (debug build, no release step).
+
+After rebuilding, restart the server so `connect` and `exec` pick up your changes (`db stop` then `db start`). If `db stop` reports no PID file but queries still fail with old behavior, an orphaned process may still be listening on port 5433 — stop it with `kill $(lsof -i :5433 -t)` and start again.
+
+Exit the REPL with `Ctrl+D` or `\q`.
+
+### Development with cargo-watch
+
+Install once:
+
+```bash
+cargo install cargo-watch
+```
+
+Useful workflows:
+
+```bash
+# Rebuild on every save (use connect in a second terminal)
+cargo watch -x build
+
+# Run tests on every save
+cargo watch -x test
+
+# Re-run a SQL statement on every save
+cargo watch -x 'run -- exec "SELECT 1"'
+cargo watch -x 'run -- exec --db myapp "SELECT * FROM users"'
+
+# Rebuild and restart the server on every save
+cargo watch -c -x 'build --release' -s './target/release/db stop 2>/dev/null; ./target/release/db start'
+```
+
+`connect` is interactive, so it does not pair well with `cargo watch` relaunching it on every save. Prefer `cargo watch -x build` in one terminal and `./target/release/db connect` (or `cargo run -- connect`) in another.
 
 ### Run tests
 
@@ -192,6 +247,7 @@ src/
 ### Phase 1 — Query Engine
 | Feature | Status | Description |
 |---|---|---|
+| `SHOW DATABASES` | Done | List all databases (directories with `schema.json` under `./data/`) |
 | `SELECT` | Done | Column projection, `WHERE` (all comparison operators, `LIKE`/`ILIKE`, `IN`, `BETWEEN`, `AND`/`OR`, parentheses), `LIMIT` |
 | `ORDER BY` | Pending | Sort results by one or more columns (`ASC`/`DESC`) |
 | Aggregations | Pending | `COUNT`, `SUM`, `AVG`, `MIN`, `MAX` |

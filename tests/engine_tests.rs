@@ -64,6 +64,25 @@ fn test_engine_with_db() {
 }
 
 #[test]
+fn test_engine_show_databases() {
+    let _guard = LOCK.lock().unwrap();
+    let db = "test_engine_show_db";
+    cleanup(db);
+
+    let mut engine = Engine::new();
+    engine.execute("CREATE DATABASE test_engine_show_db").unwrap();
+
+    let result = engine.execute("SHOW DATABASES").unwrap();
+    if let ExecuteResult::Message(msg) = result {
+        assert!(msg.contains("test_engine_show_db"));
+    } else {
+        panic!("Expected Message result");
+    }
+
+    cleanup(db);
+}
+
+#[test]
 fn test_engine_drop_database_clears_current() {
     let _guard = LOCK.lock().unwrap();
     let db = "test_engine_drop_db";

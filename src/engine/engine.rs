@@ -113,6 +113,13 @@ impl Engine {
                 self.db = Some(database);
                 Ok(ExecuteResult::DbChanged(use_db.name))
             }
+            Statement::ShowDatabases(_) => {
+                let databases = storage::list_databases()?;
+                let headers = vec!["Database".to_string()];
+                let rows: Vec<Vec<String>> = databases.iter().map(|d| vec![d.clone()]).collect();
+                let output = format_table(&headers, &rows);
+                Ok(ExecuteResult::Message(output))
+            }
         }
     }
 }

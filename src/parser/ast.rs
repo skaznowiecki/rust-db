@@ -9,6 +9,7 @@ pub enum Statement {
     InsertInto(InsertInto),
     Use(UseDatabase),
     Select(Select),
+    ShowDatabases(ShowDatabases),
 }
 
 #[derive(Debug, PartialEq)]
@@ -60,6 +61,9 @@ pub enum WhereExpr {
     And(Box<WhereExpr>, Box<WhereExpr>),
     Or(Box<WhereExpr>, Box<WhereExpr>),
 }
+
+#[derive(Debug, PartialEq)]
+pub struct ShowDatabases;
 
 #[derive(Debug, PartialEq)]
 pub struct DropDatabase {

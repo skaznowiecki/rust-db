@@ -84,6 +84,14 @@ impl Parser {
                 self.advance();
                 self.parse_select()
             }
+            Some(Token::Keyword(k)) if k == "SHOW" => {
+                self.advance();
+                match self.peek() {
+                    Some(Token::Keyword(k)) if k == "DATABASES" => self.parse_show_databases(),
+                    Some(token) => Err(DbError::ParseError(format!("Unexpected token after SHOW: {:?}", token))),
+                    None => Err(DbError::ParseError("Unexpected end of input after SHOW".into())),
+                }
+            }
             Some(token) => Err(DbError::ParseError(format!("Unexpected token: {:?}", token))),
             None => Err(DbError::ParseError("Empty input".into())),
         }
