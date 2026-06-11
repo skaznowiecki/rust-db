@@ -5,4 +5,5 @@ pub mod drop_table;
 pub mod insert_into;
 pub mod select;
 pub mod show_databases;
+pub mod show_tables;
 pub mod use_db;

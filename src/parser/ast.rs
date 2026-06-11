@@ -10,6 +10,7 @@ pub enum Statement {
     Use(UseDatabase),
     Select(Select),
     ShowDatabases(ShowDatabases),
+    ShowTables(ShowTables),
 }
 
 #[derive(Debug, PartialEq)]
@@ -64,6 +65,9 @@ pub enum WhereExpr {
 
 #[derive(Debug, PartialEq)]
 pub struct ShowDatabases;
+
+#[derive(Debug, PartialEq)]
+pub struct ShowTables;
 
 #[derive(Debug, PartialEq)]
 pub struct DropDatabase {

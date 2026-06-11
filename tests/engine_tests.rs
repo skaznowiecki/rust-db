@@ -83,6 +83,37 @@ fn test_engine_show_databases() {
 }
 
 #[test]
+fn test_engine_show_tables() {
+    let _guard = LOCK.lock().unwrap();
+    let db = "test_engine_show_tables";
+    cleanup(db);
+
+    let mut engine = Engine::new();
+    engine.execute("CREATE DATABASE test_engine_show_tables").unwrap();
+    engine.execute("USE test_engine_show_tables").unwrap();
+    engine.execute("CREATE TABLE users (id INTEGER)").unwrap();
+    engine.execute("CREATE TABLE orders (id INTEGER)").unwrap();
+
+    let result = engine.execute("SHOW TABLES").unwrap();
+    if let ExecuteResult::Message(msg) = result {
+        assert!(msg.contains("users"));
+        assert!(msg.contains("orders"));
+    } else {
+        panic!("Expected Message result");
+    }
+
+    cleanup(db);
+}
+
+#[test]
+fn test_engine_show_tables_without_db() {
+    let _guard = LOCK.lock().unwrap();
+    let mut engine = Engine::new();
+    let result = engine.execute("SHOW TABLES");
+    assert!(result.is_err());
+}
+
+#[test]
 fn test_engine_drop_database_clears_current() {
     let _guard = LOCK.lock().unwrap();
     let db = "test_engine_drop_db";

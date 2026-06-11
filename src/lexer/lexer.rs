@@ -2,7 +2,7 @@ use crate::error::DbError;
 use super::token::Token;
 
 const KEYWORDS: &[&str] = &[
-    "CREATE", "SHOW", "DROP", "DATABASE", "DATABASES", "TABLE", "USE",
+    "CREATE", "SHOW", "DROP", "DATABASE", "DATABASES", "TABLE", "TABLES", "USE",
     "INSERT", "INTO", "VALUES",
     "SERIAL", "INTEGER", "INT", "VARCHAR", "TEXT", "BOOLEAN",
     "PRIMARY", "KEY", "NOT", "NULL", "UNIQUE", "DEFAULT",

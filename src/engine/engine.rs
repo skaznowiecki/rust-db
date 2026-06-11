@@ -120,6 +120,14 @@ impl Engine {
                 let output = format_table(&headers, &rows);
                 Ok(ExecuteResult::Message(output))
             }
+            Statement::ShowTables(_) => {
+                let db = self.require_db()?;
+                let tables = storage::list_tables(&db.name)?;
+                let headers = vec!["Table".to_string()];
+                let rows: Vec<Vec<String>> = tables.iter().map(|t| vec![t.clone()]).collect();
+                let output = format_table(&headers, &rows);
+                Ok(ExecuteResult::Message(output))
+            }
         }
     }
 }

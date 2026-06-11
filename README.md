@@ -9,7 +9,7 @@ This is a personal learning project by [Sergio Kaznowiecki](https://github.com/s
 ## Current Features
 
 - **SQL Parser** — Hand-written lexer and parser (no dependencies) supporting:
-  - `CREATE DATABASE`, `DROP DATABASE`, `SHOW DATABASES`
+  - `CREATE DATABASE`, `DROP DATABASE`, `SHOW DATABASES`, `SHOW TABLES`
   - `CREATE TABLE` with types and constraints, `DROP TABLE`
   - `INSERT INTO` with field and type validation
   - `SELECT` with specific columns or `*`, `WHERE` filtering (`=`, `!=`, `<`, `<=`, `>`, `>=`, `LIKE`, `ILIKE`, `IN`, `BETWEEN`), compound conditions (`AND`, `OR`, parentheses), and `LIMIT`
@@ -66,6 +66,14 @@ CREATE TABLE productos (
   stock INTEGER DEFAULT 0,
   activo BOOLEAN DEFAULT TRUE
 );
+
+SHOW TABLES;
+-- +-----------+
+-- | Table     |
+-- +-----------+
+-- | productos |
+-- +-----------+
+-- (1 rows)
 
 INSERT INTO productos (nombre, precio, stock) VALUES ('Laptop Samsung', 15000, 50);
 INSERT INTO productos (nombre, precio, stock) VALUES ('Mouse Logitech', 2500, 200);
@@ -248,6 +256,7 @@ src/
 | Feature | Status | Description |
 |---|---|---|
 | `SHOW DATABASES` | Done | List all databases (directories with `schema.json` under `./data/`) |
+| `SHOW TABLES` | Done | List all tables in the current database (from the catalog) |
 | `SELECT` | Done | Column projection, `WHERE` (all comparison operators, `LIKE`/`ILIKE`, `IN`, `BETWEEN`, `AND`/`OR`, parentheses), `LIMIT` |
 | `ORDER BY` | Pending | Sort results by one or more columns (`ASC`/`DESC`) |
 | Aggregations | Pending | `COUNT`, `SUM`, `AVG`, `MIN`, `MAX` |

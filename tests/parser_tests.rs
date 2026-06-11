@@ -160,6 +160,18 @@ fn test_parse_show_databases_no_semicolon() {
 }
 
 #[test]
+fn test_parse_show_tables() {
+    let stmt = parse_sql("SHOW TABLES;").unwrap();
+    assert_eq!(stmt, Statement::ShowTables(ShowTables));
+}
+
+#[test]
+fn test_parse_show_tables_no_semicolon() {
+    let stmt = parse_sql("SHOW TABLES").unwrap();
+    assert_eq!(stmt, Statement::ShowTables(ShowTables));
+}
+
+#[test]
 fn test_parse_drop_database() {
     let stmt = parse_sql("DROP DATABASE mi_app;").unwrap();
     assert_eq!(

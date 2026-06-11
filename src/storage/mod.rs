@@ -8,3 +8,4 @@ pub use statements::create_table::create_table;
 pub use statements::delete_database::delete_database;
 pub use statements::delete_table::delete_table;
 pub use statements::list_databases::list_databases;
+pub use statements::list_tables::list_tables;
